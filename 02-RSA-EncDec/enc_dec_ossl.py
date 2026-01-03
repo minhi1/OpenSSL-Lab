@@ -207,21 +207,84 @@ def load_rsa_public_key(pem_path: str):
     r.e = nums.e
 
     return r
-# ========== TEST_CODE ===================
-
-print("Encryption")
-rsa_obj = load_rsa_public_key("pub.pem")
-with open("plaintext", "rb") as f:
-    plaintext = f.read()
-#rsa_obj = extract_rsa_params_from_private_key(key)
-
-ciphertext = public_encrypt_pkcs1_v15(plaintext, rsa_obj)
-print(ciphertext.hex())
 
 
-print("Decryption")
-key = load_rsa_private_key("priv.pem")
-rsa_obj = extract_rsa_params_from_private_key(key)
+import argparse
+import sys
 
-plaintext = private_decrypt_pkcs1_v15(ciphertext, rsa_obj)
-print(plaintext)
+def main():
+    parser = argparse.ArgumentParser(
+        description="OpenSSL RSA Encryption and Decryption Python implementation"
+    )
+
+    parser.add_argument(
+        "key",
+        help="Public key (for encrypt) or private key (for decrypt) in PEM format"
+    )
+    parser.add_argument(
+        "input",
+        help="Input file (plaintext for encrypt, ciphertext for decrypt)"
+    )
+
+    parser.add_argument(
+        "-out",
+        dest="out",
+        help="Output file (default: stdout)"
+    )
+
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument(
+        "--encrypt",
+        action="store_true",
+        help="Encrypt input"
+    )
+    mode.add_argument(
+        "--decrypt",
+        action="store_true",
+        help="Decrypt input"
+    )
+
+    args = parser.parse_args()
+
+    if args.encrypt:
+        encrypt(args.key, args.input, args.out)
+    elif args.decrypt:
+        decrypt(args.key, args.input, args.out)
+
+
+def encrypt(pubkey_path, plaintext_path, out_path=None):
+    print("[*] Encryption mode")
+
+    rsa_obj = load_rsa_public_key(pubkey_path)
+
+    with open(plaintext_path, "rb") as f:
+        plaintext = f.read()
+
+    ciphertext = public_encrypt_pkcs1_v15(plaintext, rsa_obj)
+
+    if out_path:
+        with open(out_path, "wb") as f:
+            f.write(ciphertext)
+    else:
+        print(ciphertext.hex())
+
+def decrypt(privkey_path, ciphertext_path, out_path=None):
+    print("[*] Decryption mode")
+
+    key = load_rsa_private_key(privkey_path)
+    rsa_obj = extract_rsa_params_from_private_key(key)
+
+    with open(ciphertext_path, "rb") as f:
+        ciphertext = f.read()
+
+    plaintext = private_decrypt_pkcs1_v15(ciphertext, rsa_obj)
+
+    if out_path:
+        with open(out_path, "wb") as f:
+            f.write(plaintext)
+    else:
+        sys.stdout.buffer.write(plaintext)
+
+
+if __name__ == "__main__":
+    main()
